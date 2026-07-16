@@ -1,0 +1,17 @@
+{
+  "extraKnownMarketplaces": {
+    "bnp-skillset": {
+      "source": {
+        "source": "github",
+        "repo": "BNPTI/claude-skillset"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "bnp-code@bnp-skillset": true,
+    "bnp-gitops@bnp-skillset": true,
+    "bnp-quality@bnp-skillset": true,
+    "bnp-product@bnp-skillset": true,
+    "bnp-platform@bnp-skillset": true
+  }
+}
