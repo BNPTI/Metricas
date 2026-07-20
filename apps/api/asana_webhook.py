@@ -31,6 +31,10 @@ from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExp
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
+import os
+from dotenv import load_dotenv
+
+load_dotenv()  # lê o arquivo .env e carrega as variáveis
 
 app = FastAPI(title="Asana Webhook Receiver")
 

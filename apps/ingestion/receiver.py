@@ -35,9 +35,13 @@ NATUREZA_TABELAS = {
     # "financeiro": "metrics_financeiro",
 }
 
-# Nome da métrica que recebe tratamento especial: vai para a tabela
-# "task_events" (modelo de dados da BNP), em vez da tabela genérica de natureza.
-METRICA_TASK_EVENTS = "asana.task_events"
+# Nomes de métrica que recebem tratamento especial: vão para a tabela
+# "task_events" (modelo de dados da BNP), em vez da tabela genérica de
+# natureza -- um por vendor, mapeando para o valor de "source" correto.
+METRICAS_TASK_EVENTS = {
+    "asana.task_events": "asana",
+    "azure_devops.task_events": "azure_boards",
+}
 
 pool: Optional[asyncpg.Pool] = None
 
@@ -124,9 +128,11 @@ async def receive_metrics(request: Request):
                     value = dp.as_double if dp.HasField("as_double") else dp.as_int
                     labels = _attrs_to_dict(dp.attributes)
 
-                    # TRATAMENTO ESPECIAL: eventos de tarefa (Asana, e futuramente
-                    # DevOps) vão para a tabela task_events, no formato do modelo BNP.
-                    if metric_name == METRICA_TASK_EVENTS:
+                    # TRATAMENTO ESPECIAL: eventos de tarefa (Asana, Azure DevOps,
+                    # e futuramente outros) vão para a tabela task_events, no
+                    # formato do modelo BNP -- agnóstico a vendor.
+                    source = METRICAS_TASK_EVENTS.get(metric_name)
+                    if source is not None:
                         occurred_at_str = labels.get("occurred_at", "")
                         try:
                             occurred_at = datetime.fromisoformat(occurred_at_str.replace("Z", "+00:00"))
@@ -140,19 +146,19 @@ async def receive_metrics(request: Request):
 
                         linhas_task_events.append({
                             "event_id": labels.get("event_id", ""),
-                            "source": "asana",
+                            "source": source,
                             "project": owner_team,  # por enquanto usamos o time como projeto
                             "occurred_at": occurred_at,
                             "task_id": labels.get("task_id", ""),
                             "event_type": labels.get("event_type", ""),
-                            "work_item_type": None,
-                            "value_tag": None,
+                            "work_item_type": labels.get("work_item_type") or None,
+                            "value_tag": labels.get("value_tag") or None,
                             "priority": labels.get("priority") or None,
                             "status": labels.get("status") or None,
                             "from_status": labels.get("from_status") or None,
                             "to_status": labels.get("to_status") or None,
                             "tested": None,
-                            "environment_found": None,
+                            "environment_found": labels.get("environment_found") or None,
                             "payload": payload,
                         })
                     else:
@@ -173,7 +179,7 @@ async def receive_metrics(request: Request):
             total_inserido += len(linhas)
 
         if linhas_task_events:
-            # ON CONFLICT DO NOTHING: se o Asana reentregar o mesmo evento
+            # ON CONFLICT DO NOTHING: se o vendor reentregar o mesmo evento
             # (mesmo event_id), a segunda tentativa é simplesmente ignorada.
             await conn.executemany(
                 """
