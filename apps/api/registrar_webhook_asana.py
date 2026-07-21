@@ -18,6 +18,10 @@ Instalação:
 import os
 
 import requests
+import os
+from dotenv import load_dotenv
+
+load_dotenv()  # lê o arquivo .env e carrega as variáveis
 
 # Preferível: defina a variável de ambiente ASANA_TOKEN em vez de deixar
 # a chave escrita aqui no código (evita vazar o token sem querer).
